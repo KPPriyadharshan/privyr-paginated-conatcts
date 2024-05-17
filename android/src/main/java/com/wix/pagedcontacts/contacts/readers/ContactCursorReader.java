@@ -28,6 +28,8 @@ public class ContactCursorReader {
      public int offset = 0;
      public  int batchSize = 0;
 
+     boolean isSyncInProgress = false;
+
      String TAG = "CONTACTS";
 
 
@@ -81,10 +83,16 @@ public class ContactCursorReader {
     }
 
     public void  syncCachedContacts(QueryParams params) {
+      if(isSyncInProgress) {
+        Log.d(TAG, "syncCachedContacts: sync skipped");
+        return;
+      }
       new Thread(() -> {
         try {
           // data is already there no need to sync
-         if(cachedContacts.values().size() >= 200) return;
+         synchronized (this) {
+           isSyncInProgress = true;
+         }
 
           Cursor contactCounts  = context.getContentResolver().query(ContactsContract.Data.CONTENT_URI,
             params.getProjection(),
@@ -96,6 +104,8 @@ public class ContactCursorReader {
           int allContacts = contactCounts.getCount();
           contactCounts.close();
 
+          HashMap contactsToStore = new HashMap<String, Contact>();
+
           Cursor cursor = context.getContentResolver().query(ContactsContract.Data.CONTENT_URI,
             params.getProjection(),
             params.getSelection(),
@@ -104,19 +114,25 @@ public class ContactCursorReader {
           );
           Log.d("sync contacts", "syncCachedContacts: started ");
           if(allContacts > 50000) {
-              // synchronize the contacts once the contact access is don
-              String contactIdFromCursor = getId(cursor);
+              // synchronize the contacts once the contact access is done
+
               while (cursor.moveToNext()) {
-                if(cachedContacts.values().size() < 200) {
-                  Contact contact = read(cursor, getId(cursor));
-                  cachedContacts.put(contactIdFromCursor , contact);
-                  Log.d("contact", "syncCachedContacts:" + contact.getContactId());
+                if(contactsToStore.values().size() < 200) {
+                  String contactIdFromCursor = getId(cursor);
+                  Contact contact = read(cursor, contactIdFromCursor);
+                  contactsToStore.put(contact.getContactId() , contact);
+                  Log.d("contact", "syncCachedContacts:  " + contact.getContactId()
+                    + contact.displayName.name);
                 }else{
                   cursor.close();
                   break;
                 }
               }
-              cursor.close();
+
+            synchronized (this) {
+              cachedContacts = contactsToStore;
+            }
+            cursor.close();
 
           }else {
             cursor.close();

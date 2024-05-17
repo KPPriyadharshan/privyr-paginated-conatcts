@@ -103,8 +103,9 @@ public class ContactsProvider {
         this.contactCursorReader.offset = params.offset;
         if(params.offset == 0 && this.contactCursorReader.cachedContacts.size() == params.size) {
           this.contactCursorReader.syncCachedContacts(params);
-          Log.d("contacts", "getContactsWithRange: " +  new ArrayList<>(this.contactCursorReader.cachedContacts.values()).get(0).getContactId()  + ":: *** ::" + new ArrayList<>(this.contactCursorReader.cachedContacts.values()).get(0).displayName.name);
-          return  new ArrayList<>(this.contactCursorReader.cachedContacts.values());
+          params.getProjection(); // this called just to populate all the keys to query param
+          List<Contact> contacts = new ArrayList<>(this.contactCursorReader.cachedContacts.values());
+          return  contacts;
         }
         params.setContactsToFetch(contactsToFetch);
         Cursor cursor = queryContacts(params);

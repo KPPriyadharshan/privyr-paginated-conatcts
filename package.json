@@ -20,6 +20,14 @@
   "devDependencies": {
     "react-native": "0.61.x"
   },
+  "codegenConfig": {
+    "name": "RNPagedContactsSpec",
+    "type": "modules",
+    "jsSrcsDir": "src",
+    "android": {
+      "javaPackageName": "com.wix.pagedcontacts"
+    }
+  },
   "bugs": {
     "url": "https://github.com/wix/react-native-paged-contacts/issues"
   },

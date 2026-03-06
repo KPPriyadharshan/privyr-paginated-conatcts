@@ -13,7 +13,13 @@ Pod::Spec.new do |s|
   s.platform     = :ios, "9.0"
 
   s.source       = { :git => "https://github.com/wix/react-native-paged-contacts.git", :tag => "v#{s.version}" }
-  s.source_files  = "ios/**/*.{h,m}"
+  s.source_files  = "ios/**/*.{h,m,mm}"
 
-  s.dependency 'React'
+  install_modules_dependencies(s)
+
+  s.dependency 'React-Core'
+  s.dependency 'React-Codegen'
+  s.dependency 'RCT-Folly'
+  s.dependency 'RCTTypeSafety'
+  s.dependency 'ReactCommon/turbomodule/core'
 end

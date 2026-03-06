@@ -14,14 +14,17 @@ import com.wix.pagedcontacts.contacts.Field;
 import com.wix.pagedcontacts.contacts.permission.ReadContactsPermissionStatus;
 import com.wix.pagedcontacts.contacts.query.QueryParams;
 import com.wix.pagedcontacts.utils.Collections;
+import com.wix.pagedcontacts.NativePagedContactsSpec;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class PagedContactsModule extends ReactContextBaseJavaModule {
+public class PagedContactsModule extends NativePagedContactsSpec {
     public static final int READ_CONTACTS_PERMISSION_REQUEST_CODE = 30156;
     private final ContactsProviderFactory contactProvider;
     private Promise requestPermissionPromise;
+    // name for android RNPagedContacts
+    public static final String NAME = "ReactNativePagedContacts";
 
     public PagedContactsModule(ReactApplicationContext context) {
         super(context);
@@ -29,16 +32,14 @@ public class PagedContactsModule extends ReactContextBaseJavaModule {
     }
 
     @Override
-    public String getName() {
-        return "ReactNativePagedContacts";
-    }
-
-    @ReactMethod
     public void getAuthorizationStatus(Promise promise) {
         promise.resolve(ReadContactsPermissionStatus.getAuthorizationStatus(getCurrentActivity()));
     }
 
-    @ReactMethod
+     @Override
+    public void dispose(String uuid) {}
+
+    @Override
     public void requestAccess(String uuid, Promise promise) {
         if (ReadContactsPermissionStatus.isAuthorized(getCurrentActivity())) {
             promise.resolve(true);
@@ -49,6 +50,11 @@ public class PagedContactsModule extends ReactContextBaseJavaModule {
     }
 
     @Override
+    public void setNameMatch(String uid, String nameMatch, Promise promise) {
+        contactProvider.get(uid).setMatchName(nameMatch);
+    }
+
+    @Override
     public Map<String, Object> getConstants() {
         final Map<String, Object> constants = new HashMap<>();
         Field.exportToJs(constants);
@@ -56,44 +62,43 @@ public class PagedContactsModule extends ReactContextBaseJavaModule {
         return constants;
     }
 
-    @ReactMethod
-    public void setNameMatch(String uuid, String nameMatch) {
-        contactProvider.get(uuid).setMatchName(nameMatch);
-    }
-
-    @ReactMethod
+    @Override
     public void contactsCount(String uuid, Promise promise) {
         final int count = contactProvider.get(uuid).getContactsCount();
         promise.resolve(count);
     }
 
-    @ReactMethod
-    public void getContactsWithRange(String uuid, int offset, int size, ReadableArray keysToFetch, Promise promise) {
-        QueryParams params = new QueryParams(Collections.toStringList(keysToFetch), offset, size);
+    @Override
+    public void getContactsWithRange(String uuid, double offset, double size, ReadableArray keysToFetch,
+            Promise promise) {
+        QueryParams params = new QueryParams(Collections.toStringList(keysToFetch), (int) offset, (int) size);
         WritableArray contacts = contactProvider.get(uuid).getContacts(params);
         promise.resolve(contacts);
     }
 
-    @ReactMethod
-    public void getContactsWithIdentifiers(String uuid, ReadableArray identifiers, ReadableArray keysToFetch, Promise promise) {
-        QueryParams params = new QueryParams(Collections.toStringList(keysToFetch), Collections.toStringList(identifiers));
+    @Override
+    public void getContactsWithIdentifiers(String uuid, ReadableArray identifiers, ReadableArray keysToFetch,
+            Promise promise) {
+        QueryParams params = new QueryParams(Collections.toStringList(keysToFetch),
+                Collections.toStringList(identifiers));
         WritableArray contacts = contactProvider.get(uuid).getContactsWithIdentifiers(params);
         promise.resolve(contacts);
     }
 
-    @ReactMethod
-    public void addContact(ReadableMap contact, String uuid, Promise promise) {
+    @Override
+    public void addContacts(ReadableMap contact, String uuid, Promise promise) {
         contactProvider.get(uuid).saveContact(contact, promise);
     }
 
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         if (isReadContactsPermission(requestCode, permissions)) {
-            if (requestPermissionPromise != null) requestPermissionPromise.resolve(grantResults[0] == PermissionChecker.PERMISSION_GRANTED);
+            if (requestPermissionPromise != null)
+                requestPermissionPromise.resolve(grantResults[0] == PermissionChecker.PERMISSION_GRANTED);
         }
     }
 
     private boolean isReadContactsPermission(int requestCode, String[] permissions) {
         return requestCode == READ_CONTACTS_PERMISSION_REQUEST_CODE &&
-               Manifest.permission.READ_CONTACTS.equals(permissions[0]);
+                Manifest.permission.READ_CONTACTS.equals(permissions[0]);
     }
 }

@@ -3,7 +3,6 @@
 #import "RCTPagedContactsModule.h"
 
 #import "WXContactsManager.h"
-@import ObjectiveC;
 
 @implementation RCTPagedContactsModule
 {
@@ -32,56 +31,7 @@
 
 RCT_EXPORT_MODULE(ReactNativePagedContacts);
 
-- (NSDictionary *)constantsToExport
-{
-	NSMutableDictionary *constants = [@{
-										@"identifier": CNContactIdentifierKey,
-										@"displayName": @"displayName",
-										
-										@"namePrefix": CNContactNamePrefixKey,
-										@"givenName": CNContactGivenNameKey,
-										@"middleName": CNContactMiddleNameKey,
-										@"familyName": CNContactFamilyNameKey,
-										@"previousFamilyName": CNContactPreviousFamilyNameKey,
-										@"nameSuffix": CNContactNameSuffixKey,
-										@"nickname": CNContactNicknameKey,
-										@"organizationName": CNContactOrganizationNameKey,
-										@"departmentName": CNContactDepartmentNameKey,
-										@"jobTitle": CNContactJobTitleKey,
-										@"phoneticGivenName": CNContactPhoneticGivenNameKey,
-										@"phoneticMiddleName": CNContactPhoneticMiddleNameKey,
-										@"phoneticFamilyName": CNContactPhoneticFamilyNameKey,
-										@"birthday": CNContactBirthdayKey,
-										@"nonGregorianBirthday": CNContactNonGregorianBirthdayKey,
-										@"note": CNContactNoteKey,
-										@"imageData": CNContactImageDataKey,
-										@"thumbnailImageData": CNContactThumbnailImageDataKey,
-										@"phoneNumbers": CNContactPhoneNumbersKey,
-										@"emailAddresses": CNContactEmailAddressesKey,
-										@"postalAddresses": CNContactPostalAddressesKey,
-										@"dates": CNContactDatesKey,
-										@"urlAddresses": CNContactUrlAddressesKey,
-										@"socialProfiles": CNContactSocialProfilesKey,
-										@"instantMessageAddresses": CNContactInstantMessageAddressesKey,
-										@"relations": CNContactRelationsKey,
-										} mutableCopy];
-	
-	// CNContactPhoneticOrganizationNameKey is only available in iOS10
-	if (&CNContactPhoneticOrganizationNameKey != nil) {
-		[constants setValue:CNContactPhoneticOrganizationNameKey forKey:@"phoneticOrganizationName"];
-	}
-	
-	NSDictionary* authorizationStatusConstants = @{
-												   @"denied": @(CNAuthorizationStatusDenied),
-												   @"notDetermined": @(CNAuthorizationStatusNotDetermined),
-												   @"authorized": @(CNAuthorizationStatusAuthorized),
-												   @"restricted": @(CNAuthorizationStatusRestricted),
-												   };
-	
-	[constants addEntriesFromDictionary:authorizationStatusConstants];
-	
-	return constants;
-}
+// Constants are now defined in JavaScript for cross-platform consistency
 
 - (WXContactsManager*)_managerForIdentifier:(NSString*)identifier
 {
@@ -103,14 +53,14 @@ RCT_EXPORT_MODULE(ReactNativePagedContacts);
 	return dispatch_queue_create("RCTPagedContactsModule", DISPATCH_QUEUE_SERIAL);
 }
 
-RCT_EXPORT_METHOD(getAuthorizationStatus:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+RCT_EXPORT_METHOD(getAuthorizationStatus:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 {
 	resolve(@([WXContactsManager authorizationStatus]));
 }
 
-RCT_EXPORT_METHOD(requestAccess:(NSString*)identifier resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+RCT_EXPORT_METHOD(requestAccess:(NSString*)uuid resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 {
-	WXContactsManager* manager = [self _managerForIdentifier:identifier];
+	WXContactsManager* manager = [self _managerForIdentifier:uuid];
 	
 	[manager requestAccessWithCompletionHandler:^(BOOL granted, NSError* error) {
 		if(error)
@@ -129,44 +79,28 @@ RCT_EXPORT_METHOD(dispose:(NSString*)identifier)
 	});
 }
 
-RCT_EXPORT_METHOD(setNameMatch:(NSString*)identifier nameMatch:(NSString*)nameMatch)
+RCT_EXPORT_METHOD(setNameMatch:(NSString*)uid nameMatch:(NSString*)nameMatch resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 {
-	WXContactsManager* manager = [self _managerForIdentifier:identifier];
+	WXContactsManager* manager = [self _managerForIdentifier:uid];
 	manager.nameMatch = nameMatch;
+	resolve(nil);
 }
 
-RCT_EXPORT_METHOD(contactsCount:(NSString*)identifier  resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+RCT_EXPORT_METHOD(contactsCount:(NSString*)uid resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 {
-	WXContactsManager* manager = [self _managerForIdentifier:identifier];
+	WXContactsManager* manager = [self _managerForIdentifier:uid];
 	resolve(@(manager.contactsCount));
 }
 
-- (NSDictionary<NSString*, id>*)_flattenObject:(id)obj
-{
-	NSMutableDictionary<NSString*, id>* rv = [NSMutableDictionary new];
-	
-	unsigned int count = 0;
-	objc_property_t *list = class_copyPropertyList(object_getClass(obj), &count);
-	
-	for(unsigned int i = 0; i < count; i++)
-	{
-		objc_property_t prop = list[i];
-		NSString* propName = @(property_getName(prop));
-		rv[propName] = [obj valueForKey:propName];
-	}
-	
-	free(list);
-	
-	return rv;
-}
 
-RCT_EXPORT_METHOD(addContact:(NSDictionary*)contactData identifier:(NSString*)identifier) {
-    WXContactsManager* manager = [self _managerForIdentifier:identifier];
-    
-    CNMutableContact * contact = [[CNMutableContact alloc] init];
-    [self _updateCNContactWithContactData:contact withData:contactData];
-    
-    [manager saveContact:contact];
+RCT_EXPORT_METHOD(addContacts:(NSDictionary*)contact uuid:(NSString*)uuid resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject) {
+    WXContactsManager* manager = [self _managerForIdentifier:uuid];
+
+    CNMutableContact * cnContact = [[CNMutableContact alloc] init];
+    [self _updateCNContactWithContactData:cnContact withData:contact];
+
+    [manager saveContact:cnContact];
+    resolve(nil);
 }
 
 - (id)_transformValueToJSValue:(id)value
@@ -393,22 +327,22 @@ RCT_EXPORT_METHOD(addContact:(NSDictionary*)contactData identifier:(NSString*)id
 	return rvSet.allObjects;
 }
 
-RCT_EXPORT_METHOD(getContactsWithRange:(NSString*)identifier offset:(NSUInteger)offset batchSize:(NSUInteger)batchSize keysToFetch:(NSArray<NSString*>*)keysToFetch resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+RCT_EXPORT_METHOD(getContactsWithRange:(NSString*)uuid offset:(double)offset size:(double)size keysToFetch:(NSArray*)keysToFetch resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 {
-	if(batchSize == 0)
+	if(size == 0)
 	{
 		return resolve(@[]);
 	}
-	
+
 	NSArray* realKeysToFetch = [self _keysToFetchIncludingManadatoryKeys:keysToFetch];
-	
-	WXContactsManager* manager = [self _managerForIdentifier:identifier];
-	NSArray<CNContact*>* contacts = [manager contactsWithRange:NSMakeRange(offset, batchSize) keysToFetch:realKeysToFetch];
-	
+
+	WXContactsManager* manager = [self _managerForIdentifier:uuid];
+	NSArray<CNContact*>* contacts = [manager contactsWithRange:NSMakeRange((NSUInteger)offset, (NSUInteger)size) keysToFetch:realKeysToFetch];
+
 	resolve([self _transformCNContactsToContactDatas:contacts keysToFetch:keysToFetch managerForObscureContacts:manager]);
 }
 
-RCT_EXPORT_METHOD(getContactsWithIdentifiers:(NSString*)identifier identifiers:(NSArray<NSString*>*)identifiers keysToFetch:(NSArray<NSString*>*)keysToFetch resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+RCT_EXPORT_METHOD(getContactsWithIdentifiers:(NSString*)uuid identifiers:(NSArray*)identifiers keysToFetch:(NSArray*)keysToFetch resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 {
 	if(identifiers.count == 0)
 	{
@@ -416,8 +350,8 @@ RCT_EXPORT_METHOD(getContactsWithIdentifiers:(NSString*)identifier identifiers:(
 	}
 	
 	NSArray* realKeysToFetch = [self _keysToFetchIncludingManadatoryKeys:keysToFetch];
-	
-	WXContactsManager* manager = [self _managerForIdentifier:identifier];
+
+	WXContactsManager* manager = [self _managerForIdentifier:uuid];
 	NSArray* contacts = [manager contactsWithIdentifiers:identifiers keysToFetch:realKeysToFetch];
 	
 	resolve([self _transformCNContactsToContactDatas:contacts keysToFetch:keysToFetch managerForObscureContacts:manager]);
@@ -427,6 +361,12 @@ RCT_EXPORT_METHOD(getContactsWithIdentifiers:(NSString*)identifier identifiers:(
 + (BOOL)requiresMainQueueSetup
 {
     return YES;
+}
+
+- (std::shared_ptr<facebook::react::TurboModule>)getTurboModule:
+    (const facebook::react::ObjCTurboModule::InitParams &)params
+{
+    return std::make_shared<facebook::react::NativePagedContactsSpecJSI>(params);
 }
 
 @end
